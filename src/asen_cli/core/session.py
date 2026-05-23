@@ -116,6 +116,17 @@ class ChatSession:
             if pasted:
                 await self._run_agent(pasted)
             return True
+        if command.name == "/rename":
+            if not command.args:
+                self.console.error("Usage: /rename <new title>")
+                return True
+            new_title = " ".join(command.args)
+            if self.session_store is not None:
+                self.session_store.meta.title = new_title
+                self.session_store.meta.alias = new_title
+                self.session_store._write_meta()
+            self.console.info(f"Session renamed to: {new_title!r}")
+            return True
 
         self.console.error(f"Unknown slash command: {command.name}. Type /help.")
         return True

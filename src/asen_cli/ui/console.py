@@ -239,6 +239,7 @@ class AsenConsole:
             border_style="cyan",
         )
         table.add_column("Session ID", style="bold cyan", no_wrap=True)
+        table.add_column("Alias", style="green", no_wrap=True)
         table.add_column("Mode", no_wrap=True)
         table.add_column("Updated", no_wrap=True)
         table.add_column("Turns", justify="right", no_wrap=True)
@@ -247,6 +248,7 @@ class AsenConsole:
         for row in rows:
             table.add_row(
                 str(row.get("session_id", "")),
+                str(row.get("alias", "") or ""),
                 str(row.get("session_mode", "")),
                 str(row.get("updated_at", "")),
                 str(row.get("turn_count", "")),

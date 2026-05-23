@@ -35,7 +35,7 @@ from .utils.errors import AsenError
 app = typer.Typer(
     name="asen",
     help="Teaching-friendly CLI coding agent.",
-    no_args_is_help=True,
+    no_args_is_help=False,
     invoke_without_command=True,
 )
 config_app = typer.Typer(
@@ -56,16 +56,33 @@ mcp_app = typer.Typer(
 )
 
 
-@app.callback()
-def version_callback(
+@app.callback(invoke_without_command=True)
+def callback(
+    ctx: typer.Context,
     version: Annotated[
         bool,
         typer.Option("--version", help="Show version.", is_eager=True),
     ] = False,
+    config: Annotated[Path | None, typer.Option("--config", "-c")] = None,
+    workspace: Annotated[Path | None, typer.Option("--workspace", "-w")] = None,
+    no_approval: Annotated[
+        bool,
+        typer.Option(help="Disable approval prompts for demo/testing."),
+    ] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Show agent internals."),
+    ] = False,
+    stream: Annotated[
+        bool,
+        typer.Option("--stream/--no-stream", help="Stream assistant output as it arrives."),
+    ] = True,
 ) -> None:
     if version:
         typer.echo(f"asen-cli {__version__}")
         raise typer.Exit()
+    if ctx.invoked_subcommand is None:
+        asyncio.run(_chat(config, workspace, no_approval, verbose, stream))
 
 
 @app.command()
@@ -274,6 +291,7 @@ def session_list(
         rows = [
             {
                 "session_id": item.session_id,
+                "alias": item.alias or "",
                 "session_mode": item.session_mode,
                 "updated_at": _compact_timestamp(item.updated_at),
                 "turn_count": item.turn_count,

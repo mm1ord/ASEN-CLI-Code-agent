@@ -1,7 +1,10 @@
+import pytest
+
 from asen_cli.config import AsenConfig
 from asen_cli.core.context_manager import ContextManager
 from asen_cli.core.session_store import SessionStore, build_final_summary, resolve_session_dir
 from asen_cli.core.token_budget import TokenBudget
+from asen_cli.utils.errors import AsenError
 
 
 def _manager() -> ContextManager:
@@ -60,3 +63,56 @@ def test_build_final_summary_prefers_edits_and_latest_answer():
     assert "Recent file edits" in summary
     assert "Updated app.py with session commands" in summary
     assert "Latest assistant answer" in summary
+
+
+def test_alias_resolves_session_dir(tmp_path):
+    store = SessionStore.create(
+        AsenConfig(workspace=tmp_path, provider="openai", model="demo-model"),
+        session_mode="chat",
+        session_id="2026-05-23-alias-test",
+    )
+    store.meta.alias = "my-feature"
+    store._write_meta()
+
+    result = resolve_session_dir(tmp_path, "my-feature")
+    assert result is not None
+    assert result.name == "2026-05-23-alias-test"
+
+
+def test_alias_open_by_name(tmp_path):
+    store = SessionStore.create(
+        AsenConfig(workspace=tmp_path, provider="openai", model="demo-model"),
+        session_mode="chat",
+        session_id="2026-05-23-open-test",
+    )
+    store.meta.alias = "auth-fix"
+    store._write_meta()
+
+    reopened = SessionStore.open(tmp_path, "auth-fix")
+    assert reopened.session_id == "2026-05-23-open-test"
+    assert reopened.meta.alias == "auth-fix"
+
+
+def test_alias_ambiguous_raises(tmp_path):
+    for sid in ("2026-05-23-a", "2026-05-23-b"):
+        store = SessionStore.create(
+            AsenConfig(workspace=tmp_path, provider="openai", model="demo-model"),
+            session_mode="chat",
+            session_id=sid,
+        )
+        store.meta.alias = "duplicate"
+        store._write_meta()
+
+    with pytest.raises(AsenError, match="ambiguous"):
+        resolve_session_dir(tmp_path, "duplicate")
+
+
+def test_alias_not_found_returns_none(tmp_path):
+    SessionStore.create(
+        AsenConfig(workspace=tmp_path, provider="openai", model="demo-model"),
+        session_mode="chat",
+        session_id="2026-05-23-no-alias",
+    )
+
+    result = resolve_session_dir(tmp_path, "nonexistent-alias")
+    assert result is None

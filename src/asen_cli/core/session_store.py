@@ -35,6 +35,7 @@ class SessionMetadata(BaseModel):
     final_summary: str = DEFAULT_SUMMARY
     last_user_message: str | None = None
     closed_at: str | None = None
+    alias: str | None = None
 
 
 class SessionStore:
@@ -226,6 +227,23 @@ def resolve_session_dir(workspace: Path, session_id: str) -> Path | None:
         raise AsenError(
             f"Session id '{session_id}' is ambiguous. Matches: {match_names}"
         )
+    return _resolve_by_alias(root, session_id)
+
+
+def _resolve_by_alias(root: Path, alias: str) -> Path | None:
+    matches: list[Path] = []
+    for meta_path in root.glob("*/meta.json"):
+        try:
+            meta = SessionMetadata.model_validate_json(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if meta.alias == alias:
+            matches.append(meta_path.parent)
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        match_names = ", ".join(path.name for path in sorted(matches))
+        raise AsenError(f"Alias '{alias}' is ambiguous. Matches: {match_names}")
     return None
 
 

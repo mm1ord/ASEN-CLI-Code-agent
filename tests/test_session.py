@@ -205,7 +205,82 @@ async def test_shell_session_shows_shell_title_and_hint(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_session_store_persists_events_and_summary(tmp_path):
+async def test_rename_updates_session_title(tmp_path):
+    agent = FakeAgent()
+    console = RecordingConsole()
+    store = SessionStore.create(
+        AsenConfig(workspace=tmp_path, provider="openai", model="demo-model"),
+        session_mode="chat",
+        session_id="rename-test",
+    )
+    session = ChatSession(
+        agent=agent,
+        config=AsenConfig(workspace=tmp_path),
+        console=console,
+        input_reader=FakeInputReader(["/rename my new name", "/exit"]),
+        shell_runner=FakeShellRunner(),
+        session_store=store,
+    )
+
+    await session.run()
+
+    assert store.meta.title == "my new name"
+    assert store.meta.alias == "my new name"
+    reopened = SessionStore.open(tmp_path, "rename-test")
+    assert reopened.meta.title == "my new name"
+    assert reopened.meta.alias == "my new name"
+    info_messages = [msg for kind, msg in console.events if kind == "info"]
+    assert any("my new name" in msg for msg in info_messages)
+
+
+@pytest.mark.asyncio
+async def test_rename_multi_word_title(tmp_path):
+    agent = FakeAgent()
+    console = RecordingConsole()
+    store = SessionStore.create(
+        AsenConfig(workspace=tmp_path, provider="openai", model="demo-model"),
+        session_mode="chat",
+        session_id="rename-multi",
+    )
+    session = ChatSession(
+        agent=agent,
+        config=AsenConfig(workspace=tmp_path),
+        console=console,
+        input_reader=FakeInputReader(["/rename fix auth bug in login flow", "/exit"]),
+        shell_runner=FakeShellRunner(),
+        session_store=store,
+    )
+
+    await session.run()
+
+    assert store.meta.title == "fix auth bug in login flow"
+    assert store.meta.alias == "fix auth bug in login flow"
+
+
+@pytest.mark.asyncio
+async def test_rename_no_args_shows_error(tmp_path):
+    agent = FakeAgent()
+    console = RecordingConsole()
+    store = SessionStore.create(
+        AsenConfig(workspace=tmp_path, provider="openai", model="demo-model"),
+        session_mode="chat",
+        session_id="rename-noargs",
+    )
+    original_title = store.meta.title
+    session = ChatSession(
+        agent=agent,
+        config=AsenConfig(workspace=tmp_path),
+        console=console,
+        input_reader=FakeInputReader(["/rename", "/exit"]),
+        shell_runner=FakeShellRunner(),
+        session_store=store,
+    )
+
+    await session.run()
+
+    error_messages = [msg for kind, msg in console.events if kind == "error"]
+    assert any("Usage" in msg for msg in error_messages)
+    assert store.meta.title == original_title
     agent = FakeAgent()
     console = RecordingConsole()
     store = SessionStore.create(

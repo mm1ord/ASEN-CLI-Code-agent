@@ -22,6 +22,7 @@ COMMANDS: tuple[SlashCommandSpec, ...] = (
     SlashCommandSpec("/quit", "Exit the interactive session."),
     SlashCommandSpec("/tools", "List tools available to the agent."),
     SlashCommandSpec("/config", "Show resolved runtime configuration without API key."),
+    SlashCommandSpec("/rename", "Rename the current session: /rename <new title>"),
     SlashCommandSpec("/paste", "Enter multiline input. Finish with a single EOF line."),
 )
 
